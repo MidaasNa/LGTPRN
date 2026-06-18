@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>LGT CRM V2</title>
+<style>
+body{font-family:Arial;margin:20px;background:#f4f6f9}
+h1{background:#003366;color:#fff;padding:10px;border-radius:8px}
+input,select,textarea,button{padding:8px;margin:4px}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{border:1px solid #ccc;padding:6px}
+th{background:#ffeb3b}
+</style>
+</head>
+<body>
+<h1>LGT CRM V2 (Google Sheets Sync)</h1>
+
+<input id="client" placeholder="Client">
+<input id="tr" placeholder="TR Number">
+<input id="city" placeholder="City">
+<select id="status">
+<option>Open</option><option>Pending</option><option>Confirmed</option><option>Closed</option>
+</select>
+<button onclick="saveRecord()">Save</button>
+<button onclick="loadData()">Refresh</button>
+
+<table>
+<thead><tr><th>Client</th><th>TR</th><th>City</th><th>Status</th></tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<script>
+const SHEET_URL="https://script.google.com/macros/s/AKfycbxw66tFfVoKQRYFD1VvZn_iwiYmDzztGmLRNmnR6QVq5uUWGhHrASTQBIo6tTqKeSTBig/exec";
+let data=[];
+
+async function loadData(){
+ const r=await fetch(SHEET_URL);
+ data=await r.json();
+ render();
+}
+
+async function saveRecord(){
+ const rec={
+  action:"add",
+  date:new Date().toISOString().split('T')[0],
+  client:client.value,
+  tr:tr.value,
+  city:city.value,
+  country:"",
+  vendor:"",
+  checkin:"",
+  checkout:"",
+  nights:"",
+  bookingref:"",
+  handled:"",
+  priority:"Normal",
+  status:status.value,
+  remarks:""
+ };
+ const r=await fetch(SHEET_URL,{
+  method:"POST",
+  headers:{"Content-Type":"text/plain"},
+  body:JSON.stringify(rec)
+ });
+ const j=await r.json();
+ if(j.success){alert("Saved");loadData();}
+ else alert("Save failed");
+}
+
+async function updateStatus(id,val){
+ await fetch(SHEET_URL,{
+  method:"POST",
+  headers:{"Content-Type":"text/plain"},
+  body:JSON.stringify({action:"updateStatus",id:id,status:val})
+ });
+}
+
+function render(){
+ tbody.innerHTML="";
+ data.forEach(x=>{
+  const trr=document.createElement("tr");
+  trr.innerHTML=`<td>${x.client||""}</td>
+  <td>${x.tr||""}</td>
+  <td>${x.city||""}</td>
+  <td>
+  <select onchange="updateStatus('${x.id}',this.value)">
+   <option ${x.status=="Open"?"selected":""}>Open</option>
+   <option ${x.status=="Pending"?"selected":""}>Pending</option>
+   <option ${x.status=="Confirmed"?"selected":""}>Confirmed</option>
+   <option ${x.status=="Closed"?"selected":""}>Closed</option>
+  </select></td>`;
+  tbody.appendChild(trr);
+ });
+}
+
+loadData();
+</script>
+</body>
+</html>
